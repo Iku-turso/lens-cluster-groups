@@ -9,6 +9,7 @@ import { allClustersGroupId, clusterGroupsInjectable } from "../cluster-groups.i
 import { byClusterName, clusterRecordsInjectable } from "../cluster-records.injectable";
 import { connectClustersInjectable } from "../connect-clusters.injectable";
 import { groupFlowsInjectable } from "../group-flows.injectable";
+import { clusterDragContext, clusterDragInjectable, type DraggedCluster } from "./cluster-drag.injectable";
 import { type ClusterGroupMemberItem, clusterGroupKind, clusterGroupMemberKind } from "./kinds";
 import { RowActionButton, RowActions, RowActionStatus } from "./row-action";
 
@@ -25,9 +26,12 @@ const ClusterAvatar = observer(({ item }: { readonly item: ClusterGroupMemberIte
   );
 });
 
-const ClusterGroupMemberRow = observer(({ item }: NavigatorItemProps<ClusterGroupMemberItem, typeof clusterGroupKind>) => {
+const ClusterGroupMemberRow = observer(({ ids, item }: NavigatorItemProps<ClusterGroupMemberItem, typeof clusterGroupKind>) => {
   const connectClusters = useInject(connectClustersInjectable)();
   const flows = useInject(groupFlowsInjectable)();
+  const clusterDrag = useInject(clusterDragInjectable)();
+  const [, groupId] = ids;
+  const dragged: DraggedCluster = { clusterId: item.id, fromGroupId: groupId };
   const name = item.record.name.get();
   const isConnected = item.record.isConnected.get();
   const isConnecting = connectClusters.isConnecting(item.id);
@@ -38,7 +42,13 @@ const ClusterGroupMemberRow = observer(({ item }: NavigatorItemProps<ClusterGrou
       <NavigatorItemIcon>
         <ClusterAvatar item={item} />
       </NavigatorItemIcon>
-      <NavigatorItemLabel $tooltip={`Open the pods of ${name}`} onClick={() => flows.openCluster(item.id)} $cursor="pointer">
+      <NavigatorItemLabel
+        onClick={() => flows.openCluster(item.id)}
+        $cursor="pointer"
+        $draggable={clusterDragContext.draggable(dragged)}
+        onDragStart={() => clusterDrag.start(dragged)}
+        onDragEnd={() => clusterDrag.end()}
+      >
         {name}
       </NavigatorItemLabel>
       <RowActions>

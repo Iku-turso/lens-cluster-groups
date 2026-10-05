@@ -1,6 +1,6 @@
 {
   "name": "@k8slens/cluster-groups",
-  "version": "0.1.0",
+  "version": "0.2.3",
   "description": "Organise your clusters into groups in the navigator, and connect a whole group, or every cluster, in one click.",
   "license": "MIT",
   "author": "Iku-turso",

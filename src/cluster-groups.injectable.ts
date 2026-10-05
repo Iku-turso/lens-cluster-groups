@@ -28,6 +28,8 @@ export interface ClusterGroups {
   readonly update: (groupId: string, draft: ClusterGroupDraft) => Promise<void>;
   readonly remove: (groupId: string) => Promise<void>;
   readonly removeCluster: (groupId: string, clusterId: string) => Promise<void>;
+  /** Puts the cluster in the target group, and takes it out of the group it came from unless that is All clusters. */
+  readonly moveCluster: (clusterId: string, fromGroupId: string, toGroupId: string) => Promise<void>;
   /** Puts the cluster in exactly the given groups, taking it out of every other one. */
   readonly setGroupsOfCluster: (clusterId: string, groupIds: readonly string[]) => Promise<void>;
 }
@@ -93,6 +95,24 @@ export const clusterGroupsInjectable = getInjectable2({
 
       removeCluster: (groupId, clusterId) =>
         replace(groupId, (group) => ({ ...group, clusterIds: group.clusterIds.filter((id) => id !== clusterId) })),
+
+      moveCluster: async (clusterId, fromGroupId, toGroupId) => {
+        if (toGroupId === allClustersGroupId || toGroupId === fromGroupId) {
+          return;
+        }
+
+        const groups = await loaded;
+
+        action(() => {
+          groups.forEach((group, index) => {
+            if (group.id === toGroupId && !group.clusterIds.includes(clusterId)) {
+              groups[index] = { ...group, clusterIds: [...group.clusterIds, clusterId] };
+            } else if (group.id === fromGroupId) {
+              groups[index] = { ...group, clusterIds: group.clusterIds.filter((id) => id !== clusterId) };
+            }
+          });
+        })();
+      },
 
       setGroupsOfCluster: async (clusterId, groupIds) => {
         const groups = await loaded;

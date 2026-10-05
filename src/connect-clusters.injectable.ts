@@ -69,8 +69,6 @@ export const connectClustersInjectable = getInjectable2({
           return;
         }
 
-        showInfoNotification(`Connecting ${toConnect.length} ${plural(toConnect.length)} in ${whatIsConnected}…`);
-
         const failed: string[] = [];
         const queue = [...toConnect];
 

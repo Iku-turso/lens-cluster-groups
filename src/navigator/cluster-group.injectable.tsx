@@ -17,10 +17,12 @@ import {
 import { useInject } from "@k8slens/use-inject";
 import { computed } from "mobx";
 import { observer } from "mobx-react";
+import { type DragEvent, useState } from "react";
 import { allClustersGroupId, clusterGroupsInjectable } from "../cluster-groups.injectable";
 import { byClusterName, clusterRecordsInjectable } from "../cluster-records.injectable";
 import { connectClustersInjectable } from "../connect-clusters.injectable";
 import { groupFlowsInjectable } from "../group-flows.injectable";
+import { clusterDragContext, clusterDragInjectable } from "./cluster-drag.injectable";
 import { type ClusterGroupItem, clusterGroupKind, clusterGroupsRootKind } from "./kinds";
 import { RowActionButton, RowActions, RowActionStatus } from "./row-action";
 
@@ -30,6 +32,16 @@ const ClusterGroupRow = observer(({ kind, ids, item }: NavigatorItemProps<Cluste
   const drillDown = useItemDrillDown(kind, ...ids);
   const flows = useInject(groupFlowsInjectable)();
   const connectClusters = useInject(connectClustersInjectable)();
+  const clusterDrag = useInject(clusterDragInjectable)();
+  const [isDraggedOver, setIsDraggedOver] = useState(false);
+  const isDropTarget = isDraggedOver && clusterDrag.canDropOn(item.id);
+
+  // Entering a child of the label leaves the label too, which is not leaving it for the user.
+  const draggedOverWhen = (isOver: boolean) => (event: DragEvent<HTMLDivElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setIsDraggedOver(isOver);
+    }
+  };
 
   const total = item.members.length;
   const connected = item.members.filter((member) => member.isConnected.get()).length;
@@ -40,7 +52,20 @@ const ClusterGroupRow = observer(({ kind, ids, item }: NavigatorItemProps<Cluste
     <>
       {hasChildren && total > 0 ? <NavigatorBranchIndicator isOpen={isOpen} /> : <NavigatorLeafIndicator />}
       <NavigatorItemIcon>{item.isAllClusters ? <LayersIcon $size="m" /> : <FolderIcon $size="m" />}</NavigatorItemIcon>
-      <NavigatorItemLabel $tooltip={`${item.name}: ${connected} of ${total} connected`}>{item.name}</NavigatorItemLabel>
+      <NavigatorItemLabel
+        $tooltip={`${item.name}: ${connected} of ${total} connected`}
+        $droppable={clusterDragContext.droppable((cluster) => {
+          setIsDraggedOver(false);
+          void clusterDrag.drop(cluster, item.id);
+        })}
+        onDragEnter={draggedOverWhen(true)}
+        onDragLeave={draggedOverWhen(false)}
+        $color={isDropTarget ? "primary" : undefined}
+        $backgroundColor={isDropTarget ? "backgroundPrimaryDimmed" : undefined}
+        $border={isDropTarget ? { radius: "s" } : undefined}
+      >
+        {item.name}
+      </NavigatorItemLabel>
       <RowActions>
         <Span $font={{ size: "s" }} $style={{ opacity: 0.7, whiteSpace: "nowrap" }}>
           {connected}/{total}
